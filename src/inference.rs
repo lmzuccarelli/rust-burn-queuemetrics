@@ -1,34 +1,32 @@
 use burn::{
     data::{dataloader::batcher::Batcher, dataset::Dataset},
     module::Module,
-    record::{NoStdTrainingRecorder, Recorder},
+    record::{CompactRecorder, Recorder},
     tensor::backend::Backend,
 };
-
-//use rgb::RGB8;
-//use textplots::{Chart, ColorPlot, Shape};
 
 use crate::{
     dataset::{QueueMetrics, QueueMetricsBatcher, QueueMetricsDataset, NUM_CLASSES, NUM_FEATURES},
     model::{ModelConfig, ModelRecord},
 };
 
-pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device) {
-    let record: ModelRecord<B> = NoStdTrainingRecorder::new()
-        .load(format!("{artifact_dir}/model").into(), &device)
-        .expect("Trained model should exist; run train first");
+use custom_logger as log;
 
+pub fn infer<B: Backend>(artifacts_dir: &str, device: B::Device) {
     // parameters are features,classes,hidden size
+    let record: ModelRecord<B> = CompactRecorder::new()
+        .load(format!("{artifacts_dir}/model").into(), &device)
+        .expect("Trained model should exist; run train first");
     let model = ModelConfig::new(NUM_FEATURES, NUM_CLASSES, 256)
         .init(&device)
         .load_record(record);
 
-    // Use a sample of 1000 items from the test split
+    // Use a sample of 10 items from the test split
     let dataset = QueueMetricsDataset::test();
-    let items: Vec<QueueMetrics> = dataset.iter().take(2000).collect();
+    let items: Vec<QueueMetrics> = dataset.iter().take(1000).collect();
 
-    let batcher = QueueMetricsBatcher::new(device);
-    let batch = batcher.batch(items.clone());
+    let batcher = QueueMetricsBatcher::new(device.clone());
+    let batch = batcher.batch(items.clone(), &device);
     let predicted = model.forward(batch.inputs.clone());
     let targets = batch.targets;
 
@@ -46,41 +44,21 @@ pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device) {
         let fmt_predicted: String = format!("{}", index);
         if fmt_expected.eq(&fmt_predicted) {
             correct += 1;
-        } else {
-            println!(
-                "count {:0>4} : predicted {} : expected {} : {:?} ",
-                count, fmt_predicted, fmt_expected, predicted[count]
-            );
         }
+        log::debug!(
+            "count {:0>4} : predicted {} : expected {} : {:?} ",
+            count,
+            fmt_predicted,
+            fmt_expected,
+            predicted[count]
+        );
         count += 1;
     }
-    println!(
-        "summary total tests {} correct % {}",
+    log::info!(
+        "summary total tests {} : correct {}%",
         count,
         (correct as f32 / count as f32) * 100.0
     );
-
-    /*
-    let points = predicted
-        .iter::<f32>()
-        .zip(expected.iter::<f32>())
-        .collect::<Vec<_>>();
-
-    println!("Predicted vs. Expected Vital Signs Status");
-    Chart::new_with_y_range(32, 32, 0., 5., 0., 5.)
-        .linecolorplot(
-            &Shape::Points(&points),
-            RGB8 {
-                r: 255,
-                g: 85,
-                b: 85,
-            },
-        )
-        .display();
-
-    // Print a single numeric value as an example
-    println!("Predicted {:?} Expected {:?}", points[17].0, points[17].1);
-    */
 }
 
 fn find_max_index(input: &Vec<f32>) -> (usize, f32) {

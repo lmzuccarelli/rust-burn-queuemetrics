@@ -4,7 +4,7 @@ use burn::optim::AdamConfig;
 use burn::{
     data::{dataloader::DataLoaderBuilder, dataset::Dataset},
     prelude::*,
-    record::{CompactRecorder, NoStdTrainingRecorder},
+    record::CompactRecorder,
     tensor::backend::AutodiffBackend,
     train::{
         metric::AccuracyMetric, metric::CpuMemory, metric::CpuTemperature, metric::CpuUse,
@@ -27,6 +27,9 @@ pub struct ExpConfig {
 
     #[config(default = 64)]
     pub batch_size: usize,
+
+    #[config(default = 1.0e-4)]
+    pub learning_rate: f64,
 }
 
 fn create_artifact_dir(artifact_dir: &str) {
@@ -38,13 +41,18 @@ fn create_artifact_dir(artifact_dir: &str) {
 pub fn run<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
     create_artifact_dir(artifact_dir);
 
-    // Config
+    // config
     let optimizer = AdamConfig::new();
     let config = ExpConfig::new(optimizer);
     let model = ModelConfig::new(NUM_FEATURES, NUM_CLASSES, 256).init(&device);
     B::seed(config.seed);
 
-    // Define train/valid datasets and dataloaders
+    // save config
+    config
+        .save(format!("{artifact_dir}/config.json"))
+        .expect("should save config");
+
+    // define train/valid datasets and dataloaders
     let train_dataset = QueueMetricsDataset::train();
     let valid_dataset = QueueMetricsDataset::validation();
 
@@ -84,18 +92,13 @@ pub fn run<B: AutodiffBackend>(artifact_dir: &str, device: B::Device) {
         .devices(vec![device.clone()])
         .num_epochs(config.num_epochs)
         .summary()
-        .build(model, config.optimizer.init(), 1e-3);
+        .build(model, config.optimizer.init(), config.learning_rate);
 
     let model_trained = learner.fit(dataloader_train, dataloader_validate);
 
-    config
-        .save(format!("{artifact_dir}/config.json").as_str())
-        .unwrap();
+    config.save(format!("{artifact_dir}/config.json")).unwrap();
 
     model_trained
-        .save_file(
-            format!("{artifact_dir}/model"),
-            &NoStdTrainingRecorder::new(),
-        )
+        .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
         .expect("Failed to save trained model");
 }

@@ -1,0 +1,8 @@
+{
+  "processors": 4,
+  "avg_batch_size": 200.00,
+  "queue_length": 3.33,
+  "processing_time": 5.39,
+  "status": 0
+}
+

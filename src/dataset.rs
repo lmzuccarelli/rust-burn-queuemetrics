@@ -118,8 +118,8 @@ impl<B: Backend> QueueMetricsBatcher<B> {
     }
 }
 
-impl<B: Backend> Batcher<QueueMetrics, QueueMetricsBatch<B>> for QueueMetricsBatcher<B> {
-    fn batch(&self, items: Vec<QueueMetrics>) -> QueueMetricsBatch<B> {
+impl<B: Backend> Batcher<B, QueueMetrics, QueueMetricsBatch<B>> for QueueMetricsBatcher<B> {
+    fn batch(&self, items: Vec<QueueMetrics>, device: &B::Device) -> QueueMetricsBatch<B> {
         let mut inputs: Vec<Tensor<B, 2>> = Vec::new();
         for item in items.iter() {
             let input_tensor = Tensor::<B, 1>::from_floats(
@@ -139,7 +139,7 @@ impl<B: Backend> Batcher<QueueMetrics, QueueMetricsBatch<B>> for QueueMetricsBat
         let inputs = self.normalizer.normalize(inputs);
         let mut targets: Vec<Tensor<B, 1, Int>> = Vec::new();
         for item in items.iter() {
-            let target_tensor = Tensor::<B, 1, Int>::from_data([item.status], &self.device);
+            let target_tensor = Tensor::<B, 1, Int>::from_data([item.status], device);
             targets.push(target_tensor.unsqueeze());
         }
 

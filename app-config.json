@@ -1,0 +1,10 @@
+{
+	"name": "rust-burn-queuemetrics",
+	"description": "a simple neural network to train,infer and serve queuemetrics",
+	"port": "8085",
+	"log_level": "debug",
+	"certs_dir": "./certs/",
+	"cert_mode": "file",
+	"artifacts_dir": "queuemetrics"
+}
+
