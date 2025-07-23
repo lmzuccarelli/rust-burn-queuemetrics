@@ -29,15 +29,15 @@ cargo build --release
 
 #execute (train)
 
-./target/release/rust-burn-metrics --config app-config.json train
+./target/release/rust-burn-queuemetrics --config app-config.json train
 
 # execute (inference)
 
-./target/release/rust-burn-metrics --config app-config.json inference
+./target/release/rust-burn-queuemetrics --config app-config.json inference
 
 # execute (serve)
 
-./target/release/rust-burn-metrics --config app-config.json serve
+./target/release/rust-burn-queuemetrics --config app-config.json serve
 
  # create a simple json file to check the prediction
 cat <<EOF > queuemetrics.json 
